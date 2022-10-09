@@ -3,33 +3,125 @@ title: "P8105_hw3_mc5296"
 output: github_document
 date: "2022-10-07"
 ---
+
 ```{r}
 library(tidyverse)
 library(ggplot2)
 ```
 
 # Problem 1
+
 ## Import Instacart
+
 ```{r}
 library(p8105.datasets) # Already installed datasets for the homework
 data("instacart")
-ncol(instacart)
-nrow(instacart)
+dim(instacart)
 head(instacart)
 ```
 
 ## EDA
+
 ```{r}
 instacart%>%
+  count(aisle, name = "n_aisle") %>%
+  arrange(desc(n_aisle)) # count the number of each of the aisle and arrange them in a decreasing order.
+```
+
+There are 134 aisles. The fresh vegetables and fresh fruits are the item most ordered.
+
+```{r}
+instacart %>%
+  count(aisle, name = "n_aisle") %>%
+  arrange(desc(n_aisle)) %>%
+  filter(n_aisle > 10000) %>% # select the aisles with more than 10000 items
+ggplot(aes(x = aisle, y = n_aisle,width = 1)) +
+  geom_bar(stat = "identity") + 
+  theme(axis.title =  element_text(size=10,face = "bold"), # set the size of the xlabel
+        axis.text.x = element_text(angle=70,  # rotate the xlabel
+                                     hjust = 1)) # adjust the position of the xlabel text
+```
+
+```{r}
+filtered_table <- instacart %>%
+  select(aisle, product_name) %>%
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits"))%>% # select the row and column we need
+  group_by(aisle,product_name) %>%
+  summarize(n_product = n())  
+filtered_table %>%
+  group_by(aisle)%>%
+  summarize(number_most_popular_items = max(n_product)) %>% # find the number of most popular item of each aisle
+  left_join(filtered_table, c("number_most_popular_items" = "n_product","aisle" = "aisle")) #find the correspond items to the number of most popular item
+```
+
+As is shown in the table , the most popular item of baking ingredients is light brown sugar, the most popular dog food care item is snack sticks chicken & rice recipe dog treats
+
+## Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers
+
+```{r}
+instacart %>%
+  select(order_hour_of_day, order_dow, product_name) %>%
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream"))%>%
+  group_by(product_name,order_dow)%>%
+  summarise(mean_hour_of_the_day = mean(order_hour_of_day)) %>%
+  pivot_wider(
+    names_from = order_dow,
+    values_from = mean_hour_of_the_day
+) %>%
+  rename(Mean_hour_Sun = "0", Mean_hour_Mon = "1", Mean_hour_Tue="2", Mean_hour_Wed = "3", Mean_hour_Thu = "4", Mean_hour_Fri = "5", Mean_hour_Sat = "6")%>%
+  knitr::kable(digits = 1)
+
+
+```
+# P2
+## Import data
+```{r}
+accelerometer <- read.csv("data/accel_data.csv")
+dim(accelerometer)
+```
+## Tidy and Wrangle the data
+```{r}
+accelerometer %>%
+  janitor::clean_names() %>%
+  pivot_longer(activity_1:activity_1440,
+               names_to = "minute_of_day",
+               names_prefix = "activity.",
+               values_to = "activity_count") %>%
+  mutate(
+    weekday_VS_weekend = ifelse(day %in% c("Saturday","Sunday"), "Weekend", "weekday")
+  ) 
+```
+
+## Aggregate across minutes to create a total activity variable for each day, and create a table showing these totals.
+```{r}
+accelerometer %>%
+  janitor::clean_names() %>%
+  pivot_longer(activity_1:activity_1440,
+               names_to = "minute_of_day",
+               names_prefix = "activity.",
+               values_to = "activity_count") %>%
+               group_by(day_id,day)%>%
+               summarize(total_activity_day = sum(activity_count))
+```
+## Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. 
+```{r}
+accelerometer %>%
+  janitor::clean_names() %>%
+  pivot_longer(activity_1:activity_1440,
+               names_to = "minute_of_day",
+               names_prefix = "activity.",
+               values_to = "activity_count") %>%
+  mutate( hour_of_day = (as.numeric(minute_of_day)-1)%/%60) %>%
+  group_by(day_id, day,hour_of_day) %>%
+  summarize(total_activity_hour = sum(activity_count)) %>%
+  ggplot(aes(x = hour_of_day, y = total_activity_hour,color = day)) +
+    geom_point() + geom_line()
+```
+
   
-```
 
-## Including Plots
 
-You can also embed plots, for example:
+  
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
+  
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
