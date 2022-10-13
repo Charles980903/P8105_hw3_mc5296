@@ -7,6 +7,7 @@ date: "2022-10-07"
 ```{r}
 library(tidyverse)
 library(ggplot2)
+library(patchwork)
 ```
 
 # Problem 1
@@ -19,6 +20,8 @@ data("instacart")
 dim(instacart)
 head(instacart)
 ```
+
+The datasets has 1384617 rows(which means there are 1384617 orders), and 15 variables. The key variables is order_dow, order_hour, product name, products' aisle and department.
 
 ## EDA
 
@@ -61,67 +64,124 @@ As is shown in the table , the most popular item of baking ingredients is light 
 ```{r}
 instacart %>%
   select(order_hour_of_day, order_dow, product_name) %>%
-  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream"))%>%
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream"))%>% # we only need these two products
   group_by(product_name,order_dow)%>%
-  summarise(mean_hour_of_the_day = mean(order_hour_of_day)) %>%
+  summarise(mean_hour_of_the_day = mean(order_hour_of_day)) %>% # calculate the mean purchase hour for each pf the product pf each day in the week
   pivot_wider(
     names_from = order_dow,
     values_from = mean_hour_of_the_day
-) %>%
-  rename(Mean_hour_Sun = "0", Mean_hour_Mon = "1", Mean_hour_Tue="2", Mean_hour_Wed = "3", Mean_hour_Thu = "4", Mean_hour_Fri = "5", Mean_hour_Sat = "6")%>%
+) %>%  # make the table more readable
+  rename(Mean_hour_Sun = "0", Mean_hour_Mon = "1", Mean_hour_Tue="2", Mean_hour_Wed = "3", Mean_hour_Thu = "4", Mean_hour_Fri = "5", Mean_hour_Sat = "6")%>% 
   knitr::kable(digits = 1)
-
-
 ```
+
 # P2
+
 ## Import data
+
 ```{r}
 accelerometer <- read.csv("data/accel_data.csv")
 dim(accelerometer)
 ```
+
 ## Tidy and Wrangle the data
+
 ```{r}
 accelerometer %>%
   janitor::clean_names() %>%
   pivot_longer(activity_1:activity_1440,
                names_to = "minute_of_day",
                names_prefix = "activity.",
-               values_to = "activity_count") %>%
+               values_to = "activity_count") %>% # convert the length and width to make the dataframe looks better.
   mutate(
     weekday_VS_weekend = ifelse(day %in% c("Saturday","Sunday"), "Weekend", "weekday")
+  ) # seperate the  weekday and weekend
+```
+
+The datasets has 50400 rows which records the data of activity of every minute in 35days. It has the id of the week, day , day in a week, minute of the day and the activity in the minute. \## Aggregate across minutes to create a total activity variable for each day, and create a table showing these totals.
+
+```{r}
+accelerometer %>%
+  janitor::clean_names() %>%
+  pivot_longer(activity_1:activity_1440,
+               names_to = "minute_of_day",
+               names_prefix = "activity.",
+               values_to = "activity_count") %>%
+               group_by(week,day)%>%
+               summarize(total_activity_day = sum(activity_count)) %>%
+  arrange(total_activity_day)
+```
+
+As is shown in the table, there is no obvious trend. But there are two days that are abnormal,which are the Saturday of the 4th and 5th week. The activity count of every minute is 1. \## Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week.
+
+```{r}
+accelerometer %>%
+  janitor::clean_names() %>%
+  pivot_longer(activity_1:activity_1440,
+               names_to = "minute_of_day",
+               names_prefix = "activity.",
+               values_to = "activity_count") %>%
+  ggplot(aes(x = as.numeric(minute_of_day), y = activity_count,color = day)) +
+    geom_point() + geom_line() + labs(x = "minute of day")
+```
+
+As is shown in the plot, the activity count is mostly low during night and high during the day. It is especially high in the morning and evening. \# P3 \## import the data
+
+```{r}
+library(p8105.datasets)
+data("ny_noaa")
+head(ny_noaa)
+dim(ny_noaa)
+summary(ny_noaa)
+```
+
+## Data cleaning
+
+```{r}
+cleaned_noaa <- ny_noaa %>%
+  separate(date, into = c("year","month","day"),sep = "-" ) %>%
+  mutate(
+    prcp = prcp/10,
+    tmax = as.numeric(tmax)/10,
+    tmin = as.numeric(tmin)/10  # make the units resonable
   ) 
+summary(cleaned_noaa)
 ```
 
-## Aggregate across minutes to create a total activity variable for each day, and create a table showing these totals.
+The most observation for snowfall is 0, for it is normal there is no snow in most of a year and we expect to see snow only in winter.
+
+## Make a two-panel plot showing the average max temperature in January and in July in each station across years
+
 ```{r}
-accelerometer %>%
-  janitor::clean_names() %>%
-  pivot_longer(activity_1:activity_1440,
-               names_to = "minute_of_day",
-               names_prefix = "activity.",
-               values_to = "activity_count") %>%
-               group_by(day_id,day)%>%
-               summarize(total_activity_day = sum(activity_count))
+cleaned_noaa %>%
+  filter(month %in% c("01","07"), !is.na(tmax)) %>%
+  group_by(id,year,month)%>%
+  summarize(
+    mean_tmax = mean(tmax)
+  ) %>%
+ggplot(aes(x=year, y = mean_tmax, group = id, color = month))+
+  geom_line()+
+  facet_grid(.~ month)+
+   theme(axis.title =  element_text(size=9,face = "bold"), # set the size of the xlabel
+        axis.text.x = element_text(angle=70,  # rotate the xlabel
+                                     hjust = 1)) # adjust the position of the xlabel text
 ```
-## Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. 
+
 ```{r}
-accelerometer %>%
-  janitor::clean_names() %>%
-  pivot_longer(activity_1:activity_1440,
-               names_to = "minute_of_day",
-               names_prefix = "activity.",
-               values_to = "activity_count") %>%
-  mutate( hour_of_day = (as.numeric(minute_of_day)-1)%/%60) %>%
-  group_by(day_id, day,hour_of_day) %>%
-  summarize(total_activity_hour = sum(activity_count)) %>%
-  ggplot(aes(x = hour_of_day, y = total_activity_hour,color = day)) +
-    geom_point() + geom_line()
+p1 <- cleaned_noaa %>%
+  filter(!is.na(tmin), !is.na(tmax))%>%
+  ggplot(aes(x = tmin, y = tmax))+
+  geom_hex()
+
+p2<- cleaned_noaa %>%
+  filter(snow>0 & snow<100)%>%
+  ggplot(aes(x = snow,fill = year)) +
+  geom_density(alpha = 0.5)+
+  theme(axis.title =  element_text(size=9,face = "bold"), # set the size of the xlabel
+        axis.text.x = element_text(angle=70,  # rotate the xlabel
+                                     hjust = 1)) # adjust the position of the xlabel text
+
+p1 + p2
+
+  
 ```
-
-  
-
-
-  
-
-  
-
