@@ -112,7 +112,9 @@ accelerometer %>%
   arrange(total_activity_day)
 ```
 
-As is shown in the table, there is no obvious trend. But there are two days that are abnormal,which are the Saturday of the 4th and 5th week. The activity count of every minute is 1. \## Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week.
+I arranged the total activity of each day by descending. As is shown in the table, there is no obvious trend. But there are two days that are abnormal,which are the Saturday of the 4th and 5th week. The activity count of every minute is 1. 
+
+## Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week.
 
 ```{r}
 accelerometer %>%
@@ -121,11 +123,16 @@ accelerometer %>%
                names_to = "minute_of_day",
                names_prefix = "activity.",
                values_to = "activity_count") %>%
-  ggplot(aes(x = as.numeric(minute_of_day), y = activity_count,color = day)) +
-    geom_point() + geom_line() + labs(x = "minute of day")
+  ggplot(aes(x = as.numeric(minute_of_day), y = activity_count,color = day)) +  #"minute_of_day" is a character vector, so we need to convert it to numeric vector.
+  labs(title = "Activity account in each day") +
+  geom_point() + geom_line() + labs(x = "minute of day")
 ```
 
-As is shown in the plot, the activity count is mostly low during night and high during the day. It is especially high in the morning and evening. \# P3 \## import the data
+As is shown in the plot, the activity count is mostly low during night and high during the day. It is especially high in the morning and evening. 
+
+# P3 
+
+## import the data
 
 ```{r}
 library(p8105.datasets)
@@ -134,7 +141,7 @@ head(ny_noaa)
 dim(ny_noaa)
 summary(ny_noaa)
 ```
-
+The dataset has 2595176 rows and  7 variables. "Id" is the key for every distinct station. "date" is the recording date,"prcp is precipation and snow is snowfall  of that day. "Snwd" is snow depth. And we also have "tmax" and "tmin", which represents the max and min tempature of that day. These data are recorded by each distinct station. We have thousands missing data in ”prcp", "snwd","snow", "tmax","tmin". In order to calculate the mean of these variables. We had to remove the missing values.
 ## Data cleaning
 
 ```{r}
@@ -154,19 +161,26 @@ The most observation for snowfall is 0, for it is normal there is no snow in mos
 
 ```{r}
 cleaned_noaa %>%
-  filter(month %in% c("01","07"), !is.na(tmax)) %>%
+  filter(month %in% c("01","07")) %>% 
   group_by(id,year,month)%>%
   summarize(
-    mean_tmax = mean(tmax)
+    mean_tmax = mean(tmax,na.rm = TRUE)  # remove the missing values, otherwise we cannot calculate the mean.
   ) %>%
-ggplot(aes(x=year, y = mean_tmax, group = id, color = month))+
-  geom_line()+
+ggplot(aes(x= as.numeric(year), y = mean_tmax, color = id))+
+  geom_point() +
+  geom_line() +
   facet_grid(.~ month)+
-   theme(axis.title =  element_text(size=9,face = "bold"), # set the size of the xlabel
+  labs(title = "Mean max temperature of January and July from 1981 to 2010",
+       x = "Year",
+       y = "mean max temperature ") +
+   theme(
+     legend.position = "none",
+     axis.title =  element_text(size=9,face = "bold"), # set the size of the xlabel
         axis.text.x = element_text(angle=70,  # rotate the xlabel
                                      hjust = 1)) # adjust the position of the xlabel text
 ```
-
+Here I used line to show the trends of mean max temperature of January and JUly across the years. The range of mean max temperature in January is in a range of -10 ℃ to  10℃.  In  July, the range is  20  to 35.
+I can see some outliers, For example, in July's plot. There is a point below 15, which is abnormal in July. Similar, there is a very low point in January, 1982
 ```{r}
 p1 <- cleaned_noaa %>%
   filter(!is.na(tmin), !is.na(tmax))%>%
