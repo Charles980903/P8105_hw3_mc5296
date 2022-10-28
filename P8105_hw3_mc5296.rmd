@@ -8,6 +8,7 @@ date: "2022-10-07"
 library(tidyverse)
 library(ggplot2)
 library(patchwork)
+library(ggridges)
 ```
 
 # Problem 1
@@ -179,23 +180,23 @@ ggplot(aes(x= as.numeric(year), y = mean_tmax, color = id))+
         axis.text.x = element_text(angle=70,  # rotate the xlabel
                                      hjust = 1)) # adjust the position of the xlabel text
 ```
-Here I used line to show the trends of mean max temperature of January and JUly across the years. The range of mean max temperature in January is in a range of -10 ℃ to  10℃.  In  July, the range is  20  to 35.
+Here I used line to show the trends of mean max temperature of January and JUly across the years. The range of mean max temperature in January is in a range of -10 degress to  10 degrees.In  July, the range is  20  to 35. Both of them fluctuated with the year.
 I can see some outliers, For example, in July's plot. There is a point below 15, which is abnormal in July. Similar, there is a very low point in January, 1982
 ```{r}
 p1 <- cleaned_noaa %>%
   filter(!is.na(tmin), !is.na(tmax))%>%
   ggplot(aes(x = tmin, y = tmax))+
-  geom_hex()
+  geom_hex()+
+  theme(legend.position = "left")
 
 p2<- cleaned_noaa %>%
   filter(snow>0 & snow<100)%>%
-  ggplot(aes(x = snow,fill = year)) +
-  geom_density(alpha = 0.5)+
+  ggplot(aes(x = snow,y = year)) +
+  geom_density_ridges(alpha = 0.5) +
+  labs(x = "Snowfall(mm)") +
   theme(axis.title =  element_text(size=9,face = "bold"), # set the size of the xlabel
         axis.text.x = element_text(angle=70,  # rotate the xlabel
                                      hjust = 1)) # adjust the position of the xlabel text
 
 p1 + p2
-
-  
 ```
